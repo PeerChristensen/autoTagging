@@ -1,0 +1,6 @@
+
+1. Starspace: ~ 32 % correct
+
+2. Starspace minus stopwords: ~ 45% correct
+
+3. Starspace lemmatized, minus stopwords: ~ 49% correct

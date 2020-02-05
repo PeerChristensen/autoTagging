@@ -21,21 +21,19 @@ test <- df[-ind,]
 test <- test %>%
   mutate(doc_id = row_number())
 
-
-
 model <- embed_tagspace(x = train$Tekst, 
                         y = train$Tag, 
                         dim      = 100,
-                        minCount = 1, 
+                        minCount = 2, 
                         ngrams   = 1, 
                         thread   = 32,
                         epoch    = 50, 
-                        adagrad  = T)
-
+                        adagrad  = T,
+                        negSearchLimit = 100, 
+                        loss = "softmax")
 
 # predict on test set
 predicted <- predict(model, test$Tekst, k=1)
-
 
 doc_id <- predicted %>% map_int(1)
 tag <- predicted %>% map(3) %>% map_chr(1)
@@ -45,6 +43,10 @@ predictions <- tibble(doc_id,tag) %>%
 #view(predictions)
 
 table(predictions$Tag==predictions$tag)
+prop.table(table(predictions$Tag==predictions$tag))
+
+
+#######
 
 # predict on untagged
 untagged <- read_excel("NPS_mapping.xlsx") %>%
