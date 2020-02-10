@@ -1,3 +1,5 @@
+# starspace model, lemmatized, minus stop words, 
+
 # starSpace
 
 # lemmatized
@@ -39,20 +41,30 @@ df <- df %>%
 x <- udpipe_annotate(lang_mod, x = df$Tekst)
 x <- as_tibble(x) %>% select(doc_id,lemma)
 
+words_remove <- x %>%
+  mutate(doc_id = as.numeric(str_remove(doc_id, "doc"))) %>%
+  left_join(df) %>%
+  count(Tag,lemma,sort=T)  %>%
+  bind_tf_idf(lemma, Tag, n) %>%
+  filter(tf_idf < 0.0009) %>%
+  pull(lemma)
+
 x <- x %>%
   nest(lemma) %>%
   mutate(Tekst = map(data, unlist), 
          Tekst = map_chr(Tekst, paste, collapse = " ")) %>%
   select(-data) %>%
-  mutate(doc_id = row_number())
+  mutate(Tekst =str_remove_all(Tekst,words_remove),
+         Tekst = str_replace_all(Tekst,"  "," ")) %>%
+  mutate(doc_id = row_number(),
+         Tag = df$Tag)
 
-ind <- createDataPartition(df$Tag, p = 0.8, list = F)
+
+ind <- createDataPartition(x$Tag, p = 0.8, list = F)
 
 train <- x[ind,]
-train$Tag <- df$Tag[ind]
 
 test <- x[-ind,]
-test$Tag <- df$Tag[-ind]
 
 test <- test %>%
   mutate(doc_id = row_number())
@@ -83,12 +95,16 @@ predictions <- tibble(doc_id,tag_pred, similarity) %>%
 table(predictions$Tag==predictions$tag_pred)
 prop.table(table(predictions$Tag==predictions$tag_pred))
 
-predictions %>%
-  group_by(Tag) %>%
-  count(tag_pred) %>%
-  ggplot(aes(Tag,n, group =tag_pred, fill = tag_pred)) +
-  geom_col(position = position_dodge()) +
-  scale_fill_tableau(palette = "Tableau 20") +
-  facet_wrap(~Tag,scales = "free_x") +
-  theme_minimal() +
-  theme(axis.text.x = element_blank())
+hist(predictions$similarity)
+  
+  # x %>%
+  #   mutate(lemma = fct_reorder(lemma, tf_idf))  %>% 
+  #   group_by(Tag) %>% 
+  #   top_n(5, tf_idf) %>% 
+  #   ungroup() %>%
+  #   mutate(lemma = reorder(lemma, tf_idf)) %>%
+  #   ggplot(aes(lemma, tf_idf, fill = Tag)) +
+  #   geom_col(show.legend = FALSE) +
+  #   labs(x = NULL, y = "tf-idf") +
+  #   facet_wrap(~Tag, ncol = 3, scales = "free") +
+  #   coord_flip()

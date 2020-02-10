@@ -7,7 +7,7 @@ library(ruimtehol)
 library(caret)
 library(tidytext)
 
-h2o.init()
+h2o.init(nthreads = 32)
 
 
 df <- read_excel("NPS_mapping.xlsx") %>%
@@ -32,10 +32,11 @@ df <- df %>%
 df_hf <- as.h2o(df)
 
 word <- h2o.tokenize(df_hf$word,"\\\\W+")
-word <- tokenize(df_hf$word)
+#word <- tokenize(df_hf$word)
 
 # word2vec model
-w2v.model <- h2o.word2vec(word, sent_sample_rate = 0, epochs = 10)
+w2v.model <- h2o.word2vec(word, sent_sample_rate = 0, epochs = 10,min_word_freq = 2,  vec_size = 150,
+                          window_size = 5)
 
 tags_vecs <- h2o.transform(w2v.model, word, aggregate_method = "AVERAGE")
 valid_tags_vecs <- ! is.na(tags_vecs$C1)
@@ -46,8 +47,8 @@ data.split <- h2o.splitFrame(data, ratios = 0.8)
 aml <- h2o.automl(x = names(tags_vecs), y = "Tag",
                      training_frame = data.split[[1]], 
                validation_frame = data.split[[2]],
-               max_runtime_secs = 500,
-               balance_classes = F)
+               max_runtime_secs = 100,
+               balance_classes = T)
 
 aml@leaderboard
 
